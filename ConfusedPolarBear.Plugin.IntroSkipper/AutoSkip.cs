@@ -48,10 +48,16 @@ public class AutoSkip : IHostedService, IDisposable
 
     private void AutoSkipChanged(object? sender, BasePluginConfiguration e)
     {
-        var configuration = (PluginConfiguration)e;
-        var newState = configuration.AutoSkip;
-        _logger.LogDebug("Setting playback timer enabled to {NewState}", newState);
-        _playbackTimer.Enabled = newState;
+        if (e is PluginConfiguration configuration) 
+        {
+            var newState = configuration.AutoSkip;
+            _logger.LogDebug("Setting playback timer enabled to {NewState}", newState);
+            _playbackTimer.Enabled = newState;
+        }
+        else 
+        {
+            _logger.LogError("Unexpected type in AutoSkipChanged: {Type}", e?.GetType().FullName);
+        }
     }
 
     private void UserDataManager_UserDataSaved(object? sender, UserDataSaveEventArgs e)
@@ -230,6 +236,7 @@ public class AutoSkip : IHostedService, IDisposable
     public Task StopAsync(CancellationToken cancellationToken)
     {
         _userDataManager.UserDataSaved -= UserDataManager_UserDataSaved;
+        Plugin.Instance!.ConfigurationChanged -= AutoSkipChanged;
         return Task.CompletedTask;
     }
 }
