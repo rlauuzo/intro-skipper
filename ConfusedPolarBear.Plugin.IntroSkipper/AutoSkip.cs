@@ -208,7 +208,7 @@ public class AutoSkip : IHostedService
         _userDataManager.UserDataSaved -= UserDataManager_UserDataSaved;
         Plugin.Instance!.AutoSkipChanged -= AutoSkipChanged;
 
-        _playbackTimer.Change(Timeout.Infinite, 0);
+        _playbackTimer.Stop();
         _playbackTimer.Dispose();   // Dispose the timer in StopAsync
 
         return Task.CompletedTask;
