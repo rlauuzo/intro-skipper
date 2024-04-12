@@ -48,13 +48,13 @@ public class AutoSkip : IHostedService, IDisposable
 
     private void AutoSkipChanged(object? sender, BasePluginConfiguration e)
     {
-        if (e is PluginConfiguration configuration) 
+        if (e is PluginConfiguration configuration)
         {
             var newState = configuration.AutoSkip;
             _logger.LogDebug("Setting playback timer enabled to {NewState}", newState);
             _playbackTimer.Enabled = newState;
         }
-        else 
+        else
         {
             _logger.LogError("Unexpected type in AutoSkipChanged: {Type}", e?.GetType().FullName);
         }
