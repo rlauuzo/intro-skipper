@@ -18,7 +18,7 @@ namespace ConfusedPolarBear.Plugin.IntroSkipper;
 /// Automatically skip past introduction sequences.
 /// Commands clients to seek to the end of the intro as soon as they start playing it.
 /// </summary>
-public class AutoSkip : IHostedService, IDisposable
+public class AutoSkip : IHostedService
 {
     private readonly object _sentSeekCommandLock = new();
 
@@ -183,30 +183,6 @@ public class AutoSkip : IHostedService, IDisposable
         }
     }
 
-    /// <summary>
-    /// Dispose.
-    /// </summary>
-    public void Dispose()
-    {
-        Dispose(true);
-        GC.SuppressFinalize(this);
-    }
-
-    /// <summary>
-    /// Protected dispose.
-    /// </summary>
-    /// <param name="disposing">Dispose.</param>
-    protected virtual void Dispose(bool disposing)
-    {
-        if (!disposing)
-        {
-            return;
-        }
-
-        _playbackTimer.Stop();
-        _playbackTimer.Dispose();
-    }
-
     /// <inheritdoc />
     public Task StartAsync(CancellationToken cancellationToken)
     {
@@ -227,7 +203,14 @@ public class AutoSkip : IHostedService, IDisposable
     /// <inheritdoc />
     public Task StopAsync(CancellationToken cancellationToken)
     {
+        _logger.LogDebug("Stopping automatic skipping");
+
         _userDataManager.UserDataSaved -= UserDataManager_UserDataSaved;
+        Plugin.Instance!.AutoSkipChanged -= AutoSkipChanged;
+
+        _playbackTimer.Change(Timeout.Infinite, 0);
+        _playbackTimer.Dispose();   // Dispose the timer in StopAsync
+
         return Task.CompletedTask;
     }
 }
