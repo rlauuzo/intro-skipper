@@ -1,4 +1,5 @@
 let introSkipper = {
+    allowEnter: true,
     skipSegments: {},
     videoPlayer: {},
     // .bind() is used here to prevent illegal invocation errors
@@ -60,6 +61,7 @@ introSkipper.d = function (msg) {
     if (introSkipper.videoPlayer != null) {
       introSkipper.d("Hooking video timeupdate");
       introSkipper.videoPlayer.addEventListener("timeupdate", introSkipper.videoPositionChanged);
+      document.body.addEventListener('keydown', introSkipper.eventHandler, true);
     }
   }
   /**
@@ -143,6 +145,17 @@ introSkipper.injectButton = async function () {
     `;
     button.dataset["intro_text"] = config.SkipButtonIntroText;
     button.dataset["credits_text"] = config.SkipButtonEndCreditsText;
+    // Store the original blur method
+    const originalBlur = button.blur;
+    // Override the blur method
+    button.blur = function () {
+        // Prevent button from losing focus only if isnt hidden AND focused
+        if (!button.classList.contains("hide") && this.matches(":focus")) {  
+            return; // Don't call blur() to keep focus
+        }
+        // Proceed with default blur behavior
+        originalBlur.call(this); // Call the stored original blur method
+    };
     /*
     * Alternative workaround for #44. Jellyfin's video component registers a global click handler
     * (located at src/controllers/playback/video/index.js:1492) that pauses video playback unless
@@ -172,7 +185,7 @@ introSkipper.getCurrentSegment = function (position) {
 /** Playback position changed, check if the skip button needs to be displayed. */
 introSkipper.videoPositionChanged = function () {
     const skipButton = document.querySelector("#skipIntro");
-    if (!skipButton) {
+    if (!skipButton || !introSkipper.allowEnter) {
         return;
     }
     const embyButton = skipButton.querySelector(".emby-button");
@@ -196,22 +209,44 @@ introSkipper.videoPositionChanged = function () {
     if (!skipButton.classList.contains("hide")) return;
 
     skipButton.classList.remove("hide");
-    embyButton.offsetWidth; // Force reflow
-    requestAnimationFrame(() => {
-        embyButton.style.opacity = '1';
-    });
+
+    embyButton.style.opacity = '1';
+
+    if (document.documentElement.classList.contains("layout-tv")) {
+        embyButton.focus({ focusVisible: true }); 
+    }
+}
+function throttle(func, limit) {
+    let inThrottle;
+    return function(...args) {
+        const context = this;
+        if (!inThrottle) {
+            func.apply(context, args);
+            inThrottle = true;
+            setTimeout(() => inThrottle = false, limit);
+        }
+    };
 }
 /** Seeks to the end of the intro. */
-introSkipper.doSkip = function (e) {
+introSkipper.doSkip = throttle(function (e) {
     introSkipper.d("Skipping intro");
     introSkipper.d(introSkipper.skipSegments);
     const segment = introSkipper.getCurrentSegment(introSkipper.videoPlayer.currentTime);
-    if (segment["SegmentType"] === "None") {
+    if (segment.SegmentType === "None") {
         console.warn("[intro skipper] doSkip() called without an active segment");
         return;
     }
-    introSkipper.videoPlayer.currentTime = segment["IntroEnd"];
-}
+    // Disable keydown events
+    introSkipper.allowEnter = false;
+    introSkipper.videoPlayer.currentTime = segment.IntroEnd;
+    // Listen for the seeked event to re-enable keydown events
+    const onSeeked = async () => {
+        await new Promise(resolve => setTimeout(resolve, 50)); // Wait 50ms
+        introSkipper.allowEnter = true;
+        introSkipper.videoPlayer.removeEventListener('seeked', onSeeked);
+    };
+    introSkipper.videoPlayer.addEventListener('seeked', onSeeked);
+}, 3000);
 /** Tests if an element with the provided selector exists. */
 introSkipper.testElement = function (selector) { return document.querySelector(selector); }
 /** Make an authenticated fetch to the Jellyfin server and parse the response body as JSON. */
@@ -221,5 +256,23 @@ introSkipper.secureFetch = async function (url) {
     const res = await fetch(url, reqInit);
     if (res.status !== 200) { throw new Error(`Expected status 200 from ${url}, but got ${res.status}`); }
     return await res.json();
+}
+/** Handle keydown events. */
+introSkipper.eventHandler = function (e) {
+    const skipButton = document.querySelector("#skipIntro");
+    if (!skipButton || skipButton.classList.contains("hide")) {
+        return;
+    }
+    // Ignore all keydown events
+    if (!introSkipper.allowEnter) {
+        e.preventDefault();
+        return;
+    }
+    if (e.key === "Enter") {
+        e.stopPropagation();
+        if (document.documentElement.classList.contains("layout-desktop")) {
+            introSkipper.doSkip();
+        }
+    }
 }
 introSkipper.setup();
