@@ -152,7 +152,7 @@ const introSkipper = {
         this.skipButton.innerHTML = `
             <button is="emby-button" type="button" class="btnSkipIntro injected">
                 <span id="btnSkipSegmentText"></span>
-                <span class="material-icons">skip_next</span>
+                <span class="material-icons skip_next"></span>
             </button>
         `;
         this.skipButton.dataset.Introduction = config.SkipButtonIntroText;
@@ -195,7 +195,7 @@ const introSkipper = {
     videoPositionChanged() {
         if (!this.skipButton) return;
         const embyButton = this.skipButton.querySelector(".emby-button");
-        const segmentType = introSkipper.getCurrentSegment(this.videoPlayer.currentTime).SegmentType;
+        const segmentType = this.getCurrentSegment(this.videoPlayer.currentTime).SegmentType;
         if (segmentType === "None") {
             if (!this.skipButton.classList.contains('show')) return;
             this.skipButton.classList.remove('show');
