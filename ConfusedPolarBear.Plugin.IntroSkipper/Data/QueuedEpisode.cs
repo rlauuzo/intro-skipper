@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 
 namespace ConfusedPolarBear.Plugin.IntroSkipper.Data;
 
@@ -26,11 +27,6 @@ public class QueuedEpisode
     /// Gets or sets the series id.
     /// </summary>
     public Guid SeriesId { get; set; }
-
-    /// <summary>
-    /// Gets the state of the episode.
-    /// </summary>
-    public EpisodeState State => Plugin.Instance!.GetState(EpisodeId);
 
     /// <summary>
     /// Gets or sets the full path to episode.
@@ -61,4 +57,35 @@ public class QueuedEpisode
     /// Gets or sets the total duration of this media file (in seconds).
     /// </summary>
     public int Duration { get; set; }
+
+    /// <summary>
+    /// Gets the episode information including segment statuses.
+    /// </summary>
+    public Dictionary<AnalysisMode, SegmentStatus> EpisodeInfo { get; } = [];
+
+    /// <summary>
+    /// Gets the status of a specific segment.
+    /// </summary>
+    /// <param name="mode">The mode of segment to get the status for.</param>
+    /// <returns>The status of the specified segment.</returns>
+    public SegmentStatus? GetSegmentStatus(AnalysisMode mode)
+    {
+        return (mode == AnalysisMode.Introduction ? Plugin.Instance!.Intros : Plugin.Instance!.Credits)
+                .TryGetValue(EpisodeId, out var segment) ? (SegmentStatus)segment.Status : SegmentStatus.None;
+    }
+
+    /// <summary>
+    /// Sets the status of a specific segment.
+    /// </summary>
+    /// <param name="mode">The mode of segment to set the status for.</param>
+    /// <param name="status">The status to set.</param>
+    public void SetSegmentStatus(AnalysisMode mode, SegmentStatus status)
+    {
+        (mode == AnalysisMode.Introduction ? Plugin.Instance!.Intros : Plugin.Instance!.Credits).AddOrUpdate(
+            EpisodeId, _ => new Segment(EpisodeId, null, status), (_, segment) =>
+            {
+                segment.Status = (int)status;
+                return segment;
+            });
+    }
 }

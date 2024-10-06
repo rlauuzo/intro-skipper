@@ -59,7 +59,7 @@ public class BlackFrameAnalyzer : IMediaFileAnalyzer
 
         var searchDistance = 2 * _minimumCreditsDuration;
 
-        foreach (var episode in episodeAnalysisQueue.Where(e => !e.State.IsAnalyzed(mode)))
+        foreach (var episode in episodeAnalysisQueue.Where(e => e.GetSegmentStatus(mode) == SegmentStatus.None))
         {
             if (cancellationToken.IsCancellationRequested)
             {
@@ -115,7 +115,6 @@ public class BlackFrameAnalyzer : IMediaFileAnalyzer
             searchStart = episode.Duration - credit.Start + (0.5 * searchDistance);
 
             creditTimes.Add(episode.EpisodeId, credit);
-            episode.State.SetAnalyzed(mode, true);
         }
 
         var analyzerHelper = new AnalyzerHelper(_logger);
@@ -199,7 +198,7 @@ public class BlackFrameAnalyzer : IMediaFileAnalyzer
 
         if (firstFrameTime > 0)
         {
-            return new(episode.EpisodeId, new TimeRange(firstFrameTime, episode.Duration));
+            return new(episode.EpisodeId, new TimeRange(firstFrameTime, episode.Duration), SegmentStatus.SegmentFound);
         }
 
         return null;

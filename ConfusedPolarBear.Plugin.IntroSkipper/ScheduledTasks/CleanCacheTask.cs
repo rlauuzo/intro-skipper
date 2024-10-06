@@ -105,30 +105,6 @@ public class CleanCacheTask : IScheduledTask
             FFmpegWrapper.DeleteEpisodeCache(episodeId);
         }
 
-        // Clean up ignore list by removing items that are no longer exist..
-        var removedItems = false;
-        foreach (var ignoredItem in Plugin.Instance.IgnoreList.Values.ToList())
-        {
-            if (!queue.ContainsKey(ignoredItem.SeasonId))
-            {
-                removedItems = true;
-                Plugin.Instance.IgnoreList.TryRemove(ignoredItem.SeasonId, out _);
-            }
-        }
-
-        // Save ignore list if at least one item was removed.
-        if (removedItems)
-        {
-            try
-            {
-                Plugin.Instance!.SaveIgnoreList();
-            }
-            catch (Exception e)
-            {
-                _logger.LogError("Failed to save ignore list: {Error}", e.Message);
-            }
-        }
-
         return Task.CompletedTask;
     }
 

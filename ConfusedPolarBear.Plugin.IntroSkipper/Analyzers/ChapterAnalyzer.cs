@@ -43,7 +43,7 @@ public class ChapterAnalyzer(ILogger<ChapterAnalyzer> logger) : IMediaFileAnalyz
             return analysisQueue;
         }
 
-        foreach (var episode in episodeAnalysisQueue.Where(e => !e.State.IsAnalyzed(mode)))
+        foreach (var episode in episodeAnalysisQueue.Where(e => e.GetSegmentStatus(mode) == SegmentStatus.None))
         {
             if (cancellationToken.IsCancellationRequested)
             {
@@ -62,7 +62,7 @@ public class ChapterAnalyzer(ILogger<ChapterAnalyzer> logger) : IMediaFileAnalyz
             }
 
             skippableRanges.Add(episode.EpisodeId, skipRange);
-            episode.State.SetAnalyzed(mode, true);
+            episode.SetSegmentStatus(mode, SegmentStatus.SegmentFound);
         }
 
         Plugin.Instance.UpdateTimestamps(skippableRanges, mode);
@@ -160,7 +160,7 @@ public class ChapterAnalyzer(ILogger<ChapterAnalyzer> logger) : IMediaFileAnalyz
             }
 
             _logger.LogTrace("{Base}: okay", baseMessage);
-            return new Segment(episode.EpisodeId, currentRange);
+            return new Segment(episode.EpisodeId, currentRange, SegmentStatus.SegmentFound);
         }
 
         return null;

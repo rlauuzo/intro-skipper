@@ -4,6 +4,7 @@ using System.Globalization;
 using System.Linq;
 using System.Net.Mime;
 using ConfusedPolarBear.Plugin.IntroSkipper.Data;
+using Jellyfin.Data.Entities.Libraries;
 using MediaBrowser.Common.Api;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -79,44 +80,17 @@ public class VisualizationController(ILogger<VisualizationController> logger) : 
     /// <param name="seasonId">Season ID.</param>
     /// <returns>List of episode titles.</returns>
     [HttpGet("IgnoreListSeason/{SeasonId}")]
-    public ActionResult<IgnoreListItem> GetIgnoreListSeason([FromRoute] Guid seasonId)
+    public ActionResult<(bool Intro, bool Credit)> GetIgnoreListSeason([FromRoute] Guid seasonId)
     {
-        if (!Plugin.Instance!.QueuedMediaItems.ContainsKey(seasonId))
+        if (Plugin.Instance!.QueuedMediaItems.TryGetValue(seasonId, out var episodes) || episodes == null)
         {
             return NotFound();
         }
 
-        if (!Plugin.Instance!.IgnoreList.TryGetValue(seasonId, out _))
-        {
-            return new IgnoreListItem(seasonId);
-        }
-
-        return new IgnoreListItem(Plugin.Instance!.IgnoreList[seasonId]);
-    }
-
-    /// <summary>
-    /// Returns the ignore list for the provided series.
-    /// </summary>
-    /// <param name="seriesId">Show ID.</param>
-    /// <returns>List of episode titles.</returns>
-    [HttpGet("IgnoreListSeries/{SeriesId}")]
-    public ActionResult<IgnoreListItem> GetIgnoreListSeries([FromRoute] Guid seriesId)
-    {
-        var seasonIds = Plugin.Instance!.QueuedMediaItems
-            .Where(kvp => kvp.Value.Any(e => e.SeriesId == seriesId))
-            .Select(kvp => kvp.Key)
-            .ToList();
-
-        if (seasonIds.Count == 0)
-        {
-            return NotFound();
-        }
-
-        return new IgnoreListItem(Guid.Empty)
-        {
-            IgnoreIntro = seasonIds.All(seasonId => Plugin.Instance!.IsIgnored(seasonId, AnalysisMode.Introduction)),
-            IgnoreCredits = seasonIds.All(seasonId => Plugin.Instance!.IsIgnored(seasonId, AnalysisMode.Credits))
-        };
+        return (
+            episodes.Any(e => e.GetSegmentStatus(AnalysisMode.Introduction) == SegmentStatus.DoNotScan),
+            episodes.Any(e => e.GetSegmentStatus(AnalysisMode.Credits) == SegmentStatus.DoNotScan)
+        );
     }
 
     /// <summary>
@@ -194,7 +168,6 @@ public class VisualizationController(ILogger<VisualizationController> logger) : 
         {
             Plugin.Instance!.Intros.TryRemove(e.EpisodeId, out _);
             Plugin.Instance!.Credits.TryRemove(e.EpisodeId, out _);
-            e.State.ResetStates();
             if (eraseCache)
             {
                 FFmpegWrapper.DeleteEpisodeCache(e.EpisodeId);
@@ -209,59 +182,24 @@ public class VisualizationController(ILogger<VisualizationController> logger) : 
     /// <summary>
     /// Updates the ignore list for the provided season.
     /// </summary>
-    /// <param name="ignoreListItem">New ignore list items.</param>
-    /// <param name="save">Save the ignore list.</param>
+    /// <param name="seasonId">Season ID to ignore.</param>
+    /// <param name="ignoreItem">New ignore list items.</param>
     /// <returns>No content.</returns>
-    [HttpPost("IgnoreList/UpdateSeason")]
-    public ActionResult UpdateIgnoreListSeason([FromBody] IgnoreListItem ignoreListItem, bool save = true)
+    [HttpPost("IgnoreList/UpdateSeason/{SeasonId}")]
+    public ActionResult UpdateIgnoreListSeason([FromRoute] Guid seasonId, [FromBody] (bool Intro, bool Credit) ignoreItem)
     {
-        if (!Plugin.Instance!.QueuedMediaItems.ContainsKey(ignoreListItem.SeasonId))
+        if (Plugin.Instance!.QueuedMediaItems.TryGetValue(seasonId, out var episodes) || episodes == null)
         {
             return NotFound();
         }
 
-        if (ignoreListItem.IgnoreIntro || ignoreListItem.IgnoreCredits)
+        foreach (var episode in episodes)
         {
-            Plugin.Instance!.IgnoreList.AddOrUpdate(ignoreListItem.SeasonId, ignoreListItem, (_, _) => ignoreListItem);
+            episode.SetSegmentStatus(AnalysisMode.Introduction, ignoreItem.Intro
+                ? SegmentStatus.DoNotScan : SegmentStatus.None);
+            episode.SetSegmentStatus(AnalysisMode.Credits, ignoreItem.Credit
+                ? SegmentStatus.DoNotScan : SegmentStatus.None);
         }
-        else
-        {
-            Plugin.Instance!.IgnoreList.TryRemove(ignoreListItem.SeasonId, out _);
-        }
-
-        if (save)
-        {
-            Plugin.Instance!.SaveIgnoreList();
-        }
-
-        return NoContent();
-    }
-
-    /// <summary>
-    /// Updates the ignore list for the provided series.
-    /// </summary>
-    /// <param name="seriesId">Series ID.</param>
-    /// <param name="ignoreListItem">New ignore list items.</param>
-    /// <returns>No content.</returns>
-    [HttpPost("IgnoreList/UpdateSeries/{SeriesId}")]
-    public ActionResult UpdateIgnoreListSeries([FromRoute] Guid seriesId, [FromBody] IgnoreListItem ignoreListItem)
-    {
-        var seasonIds = Plugin.Instance!.QueuedMediaItems
-            .Where(kvp => kvp.Value.Any(e => e.SeriesId == seriesId))
-            .Select(kvp => kvp.Key)
-            .ToList();
-
-        if (seasonIds.Count == 0)
-        {
-            return NotFound();
-        }
-
-        foreach (var seasonId in seasonIds)
-        {
-            UpdateIgnoreListSeason(new IgnoreListItem(ignoreListItem) { SeasonId = seasonId }, false);
-        }
-
-        Plugin.Instance!.SaveIgnoreList();
 
         return NoContent();
     }

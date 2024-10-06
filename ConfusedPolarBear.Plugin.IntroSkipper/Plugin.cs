@@ -89,15 +89,6 @@ public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
             _logger.LogWarning("Unable to load introduction timestamps: {Exception}", ex);
         }
 
-        try
-        {
-            LoadIgnoreList();
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning("Unable to load ignore list: {Exception}", ex);
-        }
-
         // Inject the skip intro button code into the web interface.
         try
         {
@@ -127,16 +118,6 @@ public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
     /// Gets the most recent media item queue.
     /// </summary>
     public ConcurrentDictionary<Guid, List<QueuedEpisode>> QueuedMediaItems { get; } = new();
-
-    /// <summary>
-    /// Gets all episode states.
-    /// </summary>
-    public ConcurrentDictionary<Guid, EpisodeState> EpisodeStates { get; } = new();
-
-    /// <summary>
-    /// Gets the ignore list.
-    /// </summary>
-    public ConcurrentDictionary<Guid, IgnoreListItem> IgnoreList { get; } = new();
 
     /// <summary>
     /// Gets or sets the total number of episodes in the queue.
@@ -196,53 +177,6 @@ public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
             catch (Exception e)
             {
                 _logger.LogError("SaveTimestamps {Message}", e.Message);
-            }
-        }
-    }
-
-    /// <summary>
-    /// Save IgnoreList to disk.
-    /// </summary>
-    public void SaveIgnoreList()
-    {
-        var ignorelist = Instance!.IgnoreList.Values.ToList();
-
-        lock (_serializationLock)
-        {
-            try
-            {
-                XmlSerializationHelper.SerializeToXml(ignorelist, _ignorelistPath);
-            }
-            catch (Exception e)
-            {
-                _logger.LogError("SaveIgnoreList {Message}", e.Message);
-            }
-        }
-    }
-
-    /// <summary>
-    /// Check if an item is ignored.
-    /// </summary>
-    /// <param name="id">Item id.</param>
-    /// <param name="mode">Mode.</param>
-    /// <returns>True if ignored, false otherwise.</returns>
-    public bool IsIgnored(Guid id, AnalysisMode mode)
-    {
-        return Instance!.IgnoreList.TryGetValue(id, out var item) && item.IsIgnored(mode);
-    }
-
-    /// <summary>
-    /// Load IgnoreList from disk.
-    /// </summary>
-    public void LoadIgnoreList()
-    {
-        if (File.Exists(_ignorelistPath))
-        {
-            var ignorelist = XmlSerializationHelper.DeserializeFromXml<IgnoreListItem>(_ignorelistPath);
-
-            foreach (var item in ignorelist)
-            {
-                Instance!.IgnoreList.TryAdd(item.SeasonId, item);
             }
         }
     }
@@ -356,13 +290,6 @@ public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
 
         return _itemRepository.GetChapters(item);
     }
-
-    /// <summary>
-    /// Gets the state for this item.
-    /// </summary>
-    /// <param name="id">Item ID.</param>
-    /// <returns>State of this item.</returns>
-    internal EpisodeState GetState(Guid id) => EpisodeStates.GetOrAdd(id, _ => new EpisodeState());
 
     internal void UpdateTimestamps(IReadOnlyDictionary<Guid, Segment> newTimestamps, AnalysisMode mode)
     {

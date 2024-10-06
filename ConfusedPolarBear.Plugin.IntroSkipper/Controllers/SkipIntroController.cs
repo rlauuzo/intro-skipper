@@ -203,7 +203,6 @@ public class SkipIntroController : ControllerBase
             FFmpegWrapper.DeleteCacheFiles(mode);
         }
 
-        Plugin.Instance!.EpisodeStates.Clear();
         Plugin.Instance!.SaveTimestamps(mode);
         return NoContent();
     }

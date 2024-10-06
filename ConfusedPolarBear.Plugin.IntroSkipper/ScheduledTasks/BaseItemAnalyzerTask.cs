@@ -105,7 +105,7 @@ public class BaseItemAnalyzerTask
             // of the current media items were deleted from Jellyfin since the task was started.
             var (episodes, requiredModes) = queueManager.VerifyQueue(
                 season.Value,
-                _analysisModes.Where(m => !Plugin.Instance!.IsIgnored(season.Key, m)).ToList());
+                _analysisModes);
 
             if (episodes.Count == 0)
             {
@@ -194,9 +194,9 @@ public class BaseItemAnalyzerTask
         }
 
         // Remove from Blacklist
-        foreach (var item in items.Where(e => e.State.IsBlacklisted(mode)))
+        foreach (var item in items.Where(e => e.GetSegmentStatus(mode) == SegmentStatus.NoSegmentFound))
         {
-            item.State.SetBlacklisted(mode, false);
+            item.SetSegmentStatus(mode, SegmentStatus.None);
         }
 
         _logger.LogInformation(
@@ -234,9 +234,9 @@ public class BaseItemAnalyzerTask
         }
 
         // Add items without intros/credits to blacklist.
-        foreach (var item in items.Where(e => !e.State.IsAnalyzed(mode)))
+        foreach (var item in items.Where(e => e.GetSegmentStatus(mode) == SegmentStatus.None))
         {
-            item.State.SetBlacklisted(mode, true);
+            item.SetSegmentStatus(mode, SegmentStatus.NoSegmentFound);
             totalItems -= 1;
         }
 

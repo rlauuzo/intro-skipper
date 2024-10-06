@@ -64,7 +64,7 @@ public class ChromaprintAnalyzer : IMediaFileAnalyzer
         var episodeAnalysisQueue = new List<QueuedEpisode>(analysisQueue);
 
         // Episodes that were analyzed and do not have an introduction.
-        var episodesWithoutIntros = episodeAnalysisQueue.Where(e => !e.State.IsAnalyzed(mode)).ToList();
+        var episodesWithoutIntros = episodeAnalysisQueue.Where(e => e.GetSegmentStatus(mode) == SegmentStatus.None).ToList();
 
         _analysisMode = mode;
 
@@ -76,7 +76,7 @@ public class ChromaprintAnalyzer : IMediaFileAnalyzer
         var episodesWithFingerprint = new List<QueuedEpisode>(episodesWithoutIntros);
 
         // Load fingerprints from cache if available.
-        episodesWithFingerprint.AddRange(episodeAnalysisQueue.Where(e => e.State.IsAnalyzed(mode) && File.Exists(FFmpegWrapper.GetFingerprintCachePath(e, mode))));
+        episodesWithFingerprint.AddRange(episodeAnalysisQueue.Where(e => e.GetSegmentStatus(mode) == SegmentStatus.SegmentFound && File.Exists(FFmpegWrapper.GetFingerprintCachePath(e, mode))));
 
         // Ensure at least two fingerprints are present.
         if (episodesWithFingerprint.Count == 1)
@@ -86,7 +86,7 @@ public class ChromaprintAnalyzer : IMediaFileAnalyzer
                 .Where((episode, index) => Math.Abs(index - indexInAnalysisQueue) <= 1 && index != indexInAnalysisQueue));
         }
 
-        seasonIntros = episodesWithFingerprint.Where(e => e.State.IsAnalyzed(mode)).ToDictionary(e => e.EpisodeId, e => Plugin.GetIntroByMode(e.EpisodeId, mode));
+        seasonIntros = episodesWithFingerprint.Where(e => e.GetSegmentStatus(mode) == SegmentStatus.SegmentFound).ToDictionary(e => e.EpisodeId, e => Plugin.GetIntroByMode(e.EpisodeId, mode));
 
         // Compute fingerprints for all episodes in the season
         foreach (var episode in episodesWithFingerprint)
@@ -190,7 +190,6 @@ public class ChromaprintAnalyzer : IMediaFileAnalyzer
             if (seasonIntros.ContainsKey(currentEpisode.EpisodeId))
             {
                 episodesWithFingerprint.Add(currentEpisode);
-                episodeAnalysisQueue.FirstOrDefault(x => x.EpisodeId == currentEpisode.EpisodeId)?.State.SetAnalyzed(mode, true);
             }
         }
 
@@ -275,7 +274,7 @@ public class ChromaprintAnalyzer : IMediaFileAnalyzer
         }
 
         // Create Intro classes for each time range.
-        return (new Segment(lhsId, lhsIntro), new Segment(rhsId, rhsIntro));
+        return (new Segment(lhsId, lhsIntro, SegmentStatus.SegmentFound), new Segment(rhsId, rhsIntro, SegmentStatus.SegmentFound));
     }
 
     /// <summary>

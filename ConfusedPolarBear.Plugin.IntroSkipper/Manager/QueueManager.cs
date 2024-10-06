@@ -262,20 +262,7 @@ public class QueueManager(ILogger<QueueManager> logger, ILibraryManager libraryM
 
                 foreach (var mode in modes)
                 {
-                    if (candidate.State.IsAnalyzed(mode) || candidate.State.IsBlacklisted(mode))
-                    {
-                        continue;
-                    }
-
-                    bool isAnalyzed = mode == AnalysisMode.Introduction
-                        ? Plugin.Instance!.Intros.ContainsKey(candidate.EpisodeId)
-                        : Plugin.Instance!.Credits.ContainsKey(candidate.EpisodeId);
-
-                    if (isAnalyzed)
-                    {
-                        candidate.State.SetAnalyzed(mode, true);
-                    }
-                    else
+                    if (candidate.GetSegmentStatus(mode) == SegmentStatus.None)
                     {
                         reqModes.Add(mode);
                     }

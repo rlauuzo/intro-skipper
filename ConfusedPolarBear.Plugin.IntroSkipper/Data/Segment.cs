@@ -17,22 +17,26 @@ public class Segment
     /// </summary>
     /// <param name="episode">Episode.</param>
     /// <param name="segment">Introduction time range.</param>
-    public Segment(Guid episode, TimeRange segment)
+    /// <param name="status">Segment status.</param>
+    public Segment(Guid episode, TimeRange? segment = null, SegmentStatus? status = null)
     {
         EpisodeId = episode;
-        Start = segment.Start;
-        End = segment.End;
+        Start = segment?.Start ?? 0;
+        End = segment?.End ?? 0;
+        Status = (int)(status ?? (segment is null ? SegmentStatus.None : SegmentStatus.SegmentFound));
     }
 
     /// <summary>
     /// Initializes a new instance of the <see cref="Segment"/> class.
     /// </summary>
-    /// <param name="episode">Episode.</param>
-    public Segment(Guid episode)
+    /// <param name="intro">intro.</param>
+    /// <param name="status">Segment status.</param>
+    public Segment(Intro intro, SegmentStatus? status = null)
     {
-        EpisodeId = episode;
-        Start = 0;
-        End = 0;
+        EpisodeId = intro.EpisodeId;
+        Start = intro.IntroStart;
+        End = intro.IntroEnd;
+        Status = (int)(status ?? SegmentStatus.SegmentFound);
     }
 
     /// <summary>
@@ -44,17 +48,7 @@ public class Segment
         EpisodeId = intro.EpisodeId;
         Start = intro.Start;
         End = intro.End;
-    }
-
-    /// <summary>
-    /// Initializes a new instance of the <see cref="Segment"/> class.
-    /// </summary>
-    /// <param name="intro">intro.</param>
-    public Segment(Intro intro)
-    {
-        EpisodeId = intro.EpisodeId;
-        Start = intro.IntroStart;
-        End = intro.IntroEnd;
+        Status = intro.Status;
     }
 
     /// <summary>
@@ -81,6 +75,12 @@ public class Segment
     /// </summary>
     [DataMember]
     public double End { get; set; }
+
+    /// <summary>
+    /// Gets or sets the introduction sequence end time.
+    /// </summary>
+    [DataMember]
+    public int Status { get; set; }
 
     /// <summary>
     /// Gets a value indicating whether this introduction is valid or not.
