@@ -198,7 +198,7 @@ public class BlackFrameAnalyzer : IMediaFileAnalyzer
 
         if (firstFrameTime > 0)
         {
-            return new(episode.EpisodeId, new TimeRange(firstFrameTime, episode.Duration), SegmentStatus.SegmentFound);
+            return new(episode.EpisodeId, new TimeRange(firstFrameTime, episode.Duration));
         }
 
         return null;

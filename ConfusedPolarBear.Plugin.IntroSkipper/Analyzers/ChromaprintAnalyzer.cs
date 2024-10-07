@@ -274,7 +274,7 @@ public class ChromaprintAnalyzer : IMediaFileAnalyzer
         }
 
         // Create Intro classes for each time range.
-        return (new Segment(lhsId, lhsIntro, SegmentStatus.SegmentFound), new Segment(rhsId, rhsIntro, SegmentStatus.SegmentFound));
+        return (new Segment(lhsId, lhsIntro), new Segment(rhsId, rhsIntro));
     }
 
     /// <summary>

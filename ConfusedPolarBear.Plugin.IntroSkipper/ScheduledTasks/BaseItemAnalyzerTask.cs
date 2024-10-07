@@ -196,7 +196,7 @@ public class BaseItemAnalyzerTask
         // Remove from Blacklist
         foreach (var item in items.Where(e => e.GetSegmentStatus(mode) == SegmentStatus.NoSegmentFound))
         {
-            item.SetSegmentStatus(mode, SegmentStatus.None);
+            (mode == AnalysisMode.Introduction ? Plugin.Instance!.Intros : Plugin.Instance!.Credits).TryRemove(item.EpisodeId, out _);
         }
 
         _logger.LogInformation(

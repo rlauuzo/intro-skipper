@@ -62,7 +62,6 @@ public class ChapterAnalyzer(ILogger<ChapterAnalyzer> logger) : IMediaFileAnalyz
             }
 
             skippableRanges.Add(episode.EpisodeId, skipRange);
-            episode.SetSegmentStatus(mode, SegmentStatus.SegmentFound);
         }
 
         Plugin.Instance.UpdateTimestamps(skippableRanges, mode);
@@ -160,7 +159,7 @@ public class ChapterAnalyzer(ILogger<ChapterAnalyzer> logger) : IMediaFileAnalyz
             }
 
             _logger.LogTrace("{Base}: okay", baseMessage);
-            return new Segment(episode.EpisodeId, currentRange, SegmentStatus.SegmentFound);
+            return new Segment(episode.EpisodeId, currentRange);
         }
 
         return null;
