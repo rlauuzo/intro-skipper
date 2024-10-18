@@ -67,6 +67,13 @@ jobs:
           GITHUB_SHA=${{ github.sha }}
           sed -i "s/string\.Empty/\"$GITHUB_SHA\"/g" ConfusedPolarBear.Plugin.IntroSkipper/Helper/Commit.cs
 
+      - name: Jellyfin Server Implementations
+        run: |
+            git clone --depth 1 --filter=blob:none --sparse https://github.com/jellyfin/jellyfin.git
+            cd jellyfin
+            git sparse-checkout init --cone
+            git sparse-checkout set Jellyfin.Server.Implementations
+
       - name: Build
         run: dotnet build --configuration Release --no-restore
 
